@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Main {
+  public static int timeToWait = 200;
   public static InputData getInput(String inputFilePath) throws FileNotFoundException {
     InputData input = new InputData();
     File archivo = new File(inputFilePath);
@@ -183,19 +184,19 @@ class Vehicle implements Runnable {
 
   public void tryToMove() {
     if (battery <= 0) {
-      chargeMonitor.requestCharge(ID);
+      battery += chargeMonitor.requestCharge(ID);
     }
 
     int move = chooseDirection();
 
-    boolean moveSuccesfully = parking.requestMove(move, ID, orientation, row, col, len);
+    int actualMove = parking.requestMove(move, ID, orientation, row, col, len);
 
-    if (moveSuccesfully) {
-      if (orientation == 'h') {
-        col = col + move;
-      } else {
-        row = row + move;
-      }
+    if (orientation == 'h') {
+      col = col + move * actualMove;
+    } else {
+      row = row + move * actualMove;
+    }
+    if(actualMove != 0) {
       battery -= 1;
     }
   }
@@ -209,7 +210,7 @@ class Vehicle implements Runnable {
       tryToMove();
 
       try {
-        Thread.sleep(1000);
+        Thread.sleep(Main.timeToWait);
       } catch (Exception e) {
         // TODO: handle exception
       }
@@ -222,8 +223,6 @@ class Vehicle implements Runnable {
 
 class Parking {
   private int[][] board;
-
-  private final int vehicleMaxAttempts = 4;
 
   public Parking() {
     board = new int[6][6];
@@ -315,25 +314,16 @@ class Parking {
   }
 
   // Metodo del Monitor para modificar el recurso critico (el tablero)
-  // los carros deberan esperar hasta que su movimiento sea valido, el movimiento
-  // debe tener sentido, el movimiento no deberia salirse del tablero por ejemplo,
-  // eso
-  // bloquearia el hilo del carro indefinidamente, el metodo retorna true si el
-  // carro
-  // se pudo mover, retorna false si no se puede ejecutar el movimiento, la unica
-  // razon
-  // por la que no se podria ejecutar un movimiento es porque el juego ya se acabo
-  // o se ha hecho un numero x de intentos dado por la constante
-  // vehicleMaxAttempts
-  public synchronized boolean requestMove(int move, int id, char orientation, int row, int col, int len) {
-    int tries = 0;
-    while (!isValidMove(move, id, orientation, row, col, len)) {
-      tries++;
+  // los vehiculos llaman a request move con un movimiento inicial, si el movimiento no es valido
+  // lo intentara mover en direccion contraria, si no es posible lo bloqueara hasta que se pueda
+  // mover en alguna direccion, el movimiento en el que se movio es retornado, si no se movio
+  // porque se acabo el juego, el movimiento es 0
+  public synchronized int requestMove(int move, int id, char orientation, int row, int col, int len) {
+    int m = 0;
+    while (!isValidMove(move, id, orientation, row, col, len)
+        && !isValidMove(move * -1, id, orientation, row, col, len)) {
       if (gameOver()) {
-        return false;
-      }
-      if (tries > vehicleMaxAttempts) {
-        return false;
+        return m;
       }
       try {
         wait();
@@ -341,11 +331,17 @@ class Parking {
         System.out.println("Error waiting.");
       }
     }
-    move(move, id, orientation, row, col, len);
+    if (isValidMove(move, id, orientation, row, col, len)) {
+      move(move, id, orientation, row, col, len);
+      m = 1;
+    } else {
+      move(-move, id, orientation, row, col, len);
+      m = -1;
+    }
     clearScreen();
     printBoard();
     notifyAll();
-    return true;
+    return m;
   }
 
   public static void clearScreen() {
@@ -359,7 +355,7 @@ class Parking {
       System.out.print("|");
       for (int j = 0; j < 6; j++) {
         if (board[i][j] == -1) {
-          System.out.print("#|");
+          System.out.print(" |");
         } else {
           System.out.print(board[i][j] + "|");
         }
@@ -385,7 +381,8 @@ class ChargeMonitor {
   }
 
   public synchronized int requestCharge(int id) {
-    System.out.println("Vehicle id: " + id + " Request Charged!");
+    System.out.println("Vehicle id: " + id + " Waiting for Charged!");
+    System.out.flush();
     while (vehiclesOnWait.size() > avairableBatteryUnits) {
       try {
         wait();
@@ -395,7 +392,6 @@ class ChargeMonitor {
     }
     vehiclesOnWait.add(id);
     notifyAll();
-    System.out.println("Vehicle id: " + id + " waits to Charged!");
     while (vehiclesOnWait.contains(id)) {
       try {
         wait();
@@ -405,6 +401,7 @@ class ChargeMonitor {
     }
     notifyAll();
     System.out.println("Vehicle id: " + id + " Charged!");
+    System.out.flush();
     return 10;
   }
 
@@ -421,7 +418,7 @@ class ChargeMonitor {
       }
     }
     int vehicleIdToRemove = vehiclesOnWait.remove(0);
-    // System.out.println("Charging Vehicle id: " + vehicleIdToRemove);
+    System.out.println("Charging Vehicle id: " + vehicleIdToRemove);
 
     notifyAll();
   }
@@ -441,7 +438,7 @@ class ChargeUnit implements Runnable {
     while (!parking.gameOver() || chargeMonitor.keepChargin()) {
       chargeMonitor.charge();
       try {
-        Thread.sleep(1000);
+        Thread.sleep(Main.timeToWait * 4);
       } catch (Exception e) {
         // TODO: handle exception
       }
