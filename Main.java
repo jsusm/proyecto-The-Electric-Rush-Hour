@@ -52,7 +52,7 @@ public class Main {
     input.print();
 
     Parking parking = new Parking();
-    ChargeMonitor chargeMonitor = new ChargeMonitor(2);
+    ChargeMonitor chargeMonitor = new ChargeMonitor();
     ArrayList<ChargeUnit> chargeUnits = new ArrayList<ChargeUnit>();
     ArrayList<Vehicle> vehicles = new ArrayList<>();
     ArrayList<Thread> threads = new ArrayList<>();
@@ -369,12 +369,7 @@ class Parking {
 }
 
 class ChargeMonitor {
-  private int avairableBatteryUnits = 0;
   private ArrayList<Integer> vehiclesOnWait = new ArrayList<>();
-
-  public ChargeMonitor(int units) {
-    avairableBatteryUnits = units;
-  }
 
   public boolean keepChargin() {
     return vehiclesOnWait.size() > 0;
@@ -382,14 +377,6 @@ class ChargeMonitor {
 
   public synchronized int requestCharge(int id) {
     System.out.println("Vehicle id: " + id + " Waiting for Charged!");
-    System.out.flush();
-    while (vehiclesOnWait.size() > avairableBatteryUnits) {
-      try {
-        wait();
-      } catch (InterruptedException e) {
-        // TODO: handle exception
-      }
-    }
     vehiclesOnWait.add(id);
     notifyAll();
     while (vehiclesOnWait.contains(id)) {
@@ -403,10 +390,6 @@ class ChargeMonitor {
     System.out.println("Vehicle id: " + id + " Charged!");
     System.out.flush();
     return 10;
-  }
-
-  public synchronized boolean keepCharging() {
-    return vehiclesOnWait.size() > 0;
   }
 
   public synchronized void charge() {
