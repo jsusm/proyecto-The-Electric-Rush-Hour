@@ -508,4 +508,7 @@ make ejemplo0
 make ejemplo1
 make ejemplo2
 make ejemplo3
+make ejemplo4
 ```
+
+Nota: El ejemplo4 tiene una configuración erronea en la que dos vehiculos se solapan, esto es para demostrar que el programa valida la entrada.
