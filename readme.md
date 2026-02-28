@@ -9,37 +9,37 @@ Para la solución del problema se utilizó la lógica de productor-consumidor.
 - **Unidades de carga (Productores)**: Hilos encargados de llenar la batería de los vehículos cuando estos llegen a 0. Nosotros decidimos que cuando un vehículo se quede sin batería las unidades de carga  ponen la batería del vehículo en 10 unidades.
 
 #### Recursos Críticos
-1-El primer recurso crítico es el tablero ya que dos o más hilos (vehículos) no deberían acceder a la misma casilla o espacio dentro del estacionamiento. por lo tanto su manipulación tiene que ser protegida para evitar condiciones de carrera. este tablero se encuentra dentro del monitor `Parking`.
+1-El primer recurso crítico es el tablero ya que dos o más hilos (vehículos) no deberían acceder a la misma casilla o espacio dentro del estacionamiento al mismo tiempo. por lo tanto su manipulación tiene que ser protegida para evitar condiciones de carrera. Este tablero se encuentra dentro del monitor `Parking`.
 
-2- El segundo recurso crítico en nuestra implementación es la lista de vehículos descargados dentro del monitor ChargeMonitor. ya que las unidades de carga no deben acceder a esta lista al mismo tiempo ya que puede ocurrir que dos unidades de carga quieran recargar la batería de un mismo vehículo.
+2- El segundo recurso crítico en nuestra implementación es la lista de vehículos descargados dentro del monitor ChargeMonitor. Ya que las unidades de carga no deben acceder a esta lista al mismo tiempo ya que puede ocurrir que dos unidades de carga quieran recargar la batería de un mismo vehículo.
 
 
 #### Condiciones de Sincronización
-- Si un vehículo quiere acceder a un espacio del estacionamiento que esté ocupado o esté fuera de los límites este debe esperar wait() hasta que se desocupe ese espacio 
+- Si un vehículo quiere acceder a un espacio del estacionamiento que esté ocupado este debe esperar `wait()` hasta que se desocupe ese espacio.
 
 - Si no hay vehículos en la lista vehiclesOnWait la unidad de carga espera .
 
-- Si la batería llega a 0 el vehículo se detiene y debe esperar a ser cargado por la unidad de carga. 
+- Si la batería llega a 0 el vehículo se detiene y debe esperar a ser cargado por la unidad de carga.
 
 - Si el vehículo objetivo ID 0 alcanza la columna 5 del tablero . Al cumplirse la condición los hilos termina su ejecución detiene forma coordinada para que el programa no quede colgado.
 
 #### Operaciones de acceso
-- **Ocupación de celdas**: Ésta es la operación de acceso más importante ya que se maneja la logística de acceso a las celdas del tablero y a la liberación de las celdas también. Esta operación está dentro del monitor `Parking` y se llama requestMove y al ser synchronized no permite que dos vehículos ocupen el mismo espacio. Se va a hablar más sobre este monitor y este método más adelante. 
+- **Ocupación de celdas**: Ésta es la operación de acceso más importante ya que se maneja la logística de acceso a las celdas del tablero y a la liberación de las celdas también. Esta operación está dentro del monitor `Parking` y se llama requestMove y al ser synchronized no permite que dos vehículos traten de moverse a la vez a una celda vacia. Se va a hablar más sobre este monitor y este método más adelante.
 
-- **Fin del juego (GameOver() )**: Esta operación  es crítica porque determina si los hilos deben detener su ejecución. Ella verificar si el vehículo 0 llegó a la meta que en este caso es que llegó a la columna 5 . Nosotros la colocamos synchronized ya que esta accede y evalúa el recurso crítico. Al igual que el anterior está implementando en el monitor `Parking`.
+- **Fin del juego (GameOver() )**: Esta operación es crítica porque determina si los hilos deben detener su ejecución. Ella verificar si el vehículo 0 llegó a la meta que en este caso es que llegó a la columna 5 . Es necesario que sea synchronized ya que esta accede y evalúa el recurso crítico, de lo contrario puede generar condiciones de carrera, por ejemplo que se modifique el tablero y a la mitad de la evaluación del método. Al igual que el anterior está implementando en el monitor `Parking`.
 
-- **Cargar vehiculos (requestCharge)** Para gestionar de la mejor manera la logística de cargar los vehículos y minimizar interbloqueos en esta área en específico está la operación de acceso a cargar batería. Se realiza en un monitor`ChargeMonitor`que implementa el modelo productor-consumidor . Gestiona la lista de espera de vehículos varados (vehiclesOnwait) Asegura que un vehículo se bloquee si no hay cargadores disponibles y que el cargador solo actúe si hay vehículos esperando. 
+- **Cargar vehiculos (requestCharge)** Para gestionar de la mejor manera la logística de cargar los vehículos y minimizar interbloqueos en esta área en específico está la operación de acceso a cargar batería. Se realiza en un monitor`ChargeMonitor`que implementa el modelo productor-consumidor . Gestiona la lista de espera de vehículos varados (vehiclesOnwait) Asegura que un vehículo se bloquee hasta que una unidad de carga lo recargue.
 
-- **Cargar (charge())** Se encarga de la logíca de cargar los vehículos keepCharging() ve si hay vehiculos para cargar y si es verdad charge() los retira de la lista son syncronized porque acceden a la lista de vehiculos que necesitan ser cargados .
+- **Cargar (charge())** Se encarga de la logíca de cargar los vehículos, keepCharging() ve si hay vehiculos para cargar y si es verdad charge() los retira de la lista son syncronized porque acceden a la lista de vehiculos que necesitan ser cargados.
 
 
-#### Decisiones de diseño 
+#### Decisiones de diseño
 - Los vehículos se mueven un espacio a la vez, cada 5 movimientos es más probable que avance
 y los siguientes 5 movimientos es más probable que se retroceda.
 
 - Primero implementamos el movimiento de los carros en el tablero, esto fue bastante sencillo de implementar,básicamente los vehículos son hilos que tratan de moverse en un tablero, si la posición a la que se quiere moverse el vehículo esta ocupada por otro el vehículo se bloquea hasta que la posición sea liberada, la interacción con el tablero (recurso critico) se hace a traves del monitor `Parking`.
 
-- implementamos las unidades de carga, estas fueron un poco más complicadas de pensar, puesto que las unidades decarga se tienen que comportar como "productores" y los vehículos como consumidores, los vehículos se bloquean hasta que son recargados y las unidades de carga se bloquean si no hay vehículos por recargar, el problema de la implementación fue que las unidades de carga seguian ejecutandose cuando se "completaba" el juego, pensamos en añadir una especie de tiempo límite, pero la implementación se complicaba y teníamos que usar ciertos mecanismos de java que no  entendiamos, la solución a la que llegamos fue que los vehículos al terminar su ejecución,es decir, cuando se termina el juego, se recargaran, así el hilo de la unidad de carga que estaba bloqueado puede evaluar si ya se terminó el juego y terminar su ejecución.
+- implementamos las unidades de carga, estas fueron un poco más complicadas de pensar, puesto que las unidades decarga se tienen que comportar como "productores" y los vehículos como consumidores, los vehículos se bloquean hasta que son recargados y las unidades de carga se bloquean si no hay vehículos por recargar, el problema de la implementación fue que las unidades de carga seguian ejecutandose cuando se "completaba" el juego, pensamos en añadir una especie de tiempo límite, pero la implementación se complicaba y teníamos que usar ciertos mecanismos de java que no entendiamos, la solución a la que llegamos fue que los vehículos al terminar su ejecución, es decir, cuando se termina el juego, se recargaran, así el hilo de la unidad de carga que estaba bloqueado puede evaluar si ya se terminó el juego y terminar su ejecución.
 
 - Luego nos dimos de cuenta que se podia producir un interbloqueo si cuatro vehículos se bloqueaban entre si, por lo tanto tenían que intentar moverse en la dirección contraria si la dirección que habian elegido estaba ocupada. Modificamos el comportamiento del monitor `Parking` para que revisara ambas direcciones y tomara una de ellas, esto para prevenir interbloqueos.
 
@@ -47,7 +47,8 @@ y los siguientes 5 movimientos es más probable que se retroceda.
 
 ### Procesador de entrada
 Se hizo la clase Main y en el Main está la logística de la entrada del proyecto. En el proyecto se nos solicitó que la entrada con la información de los vehículos y los cargadores(unidades de carga) fueran a través de un archivo. Por lo tanto implementamos la entrada del programa, estas se leen del archivo de entrada y se guarda la información en la clase `InputData` para luego construir todos los objetos necesarios para la ejecución del programa.
-```
+
+```java
 public class Main {
   public static InputData getInput(String inputFilePath) throws FileNotFoundException {
     InputData input = new InputData();
@@ -131,8 +132,8 @@ public class Main {
       t.start();
     }
   }}
+```
 
-  ```
 ### Monitor Parking
 La clase monitor Parking, como se ha mencionado anteriormente, se encarga del acceso al recurso crítico que es el estacionamiento y su implementación es la siguiente:
 
@@ -146,11 +147,11 @@ Método isValidMove: al igual que en los proyectos realizados a lo largo del cur
 
 Método move(): se encarga de realizar el movimiento del vehículo, en el cual pone su ID en la casilla a la que se quiere mover y vuelve a poner el valor -1 en la posición actual, volviendo así a estar disponible este espacio.
 
-Método requestMove: este es el método más importante del monitor y este fue explicado con anterioridad. Este es el método para modificar el recurso crítico (el estacionamiento); este método es synchronized, ya que no todos los hilos deben acceder al tablero. Los vehículos deben esperar hasta que el movimiento sea válido; el movimiento no debe salirse del tablero o deben ser movimientos coherentes, ya que si no se quedaría bloqueado el vehículo indefinidamente; si el vehículo se pudo mover retorna true, si no retorna false.
+Método requestMove: este es el método más importante del monitor y este fue explicado con anterioridad. Este es el método para modificar el recurso crítico (el estacionamiento); este método es synchronized, ya que los hilos no deben acceder al tablero al mismo tiempo. Los vehículos deben esperar hasta que el movimiento sea válido; el movimiento no debe salirse del tablero; este metodo retorna `1` si se tomó el movimiento solicitado o `-1` si se tomó el contrario, si no se pudo mover (porque el juego se acabó) el metodo retorna `0`.
 
 PrintBoard(): se tiene la logística para mostrar el tablero del estacionamiento.
 
-```
+```java
 class Parking {
   private int[][] board;
 
@@ -301,7 +302,7 @@ chooseDirection(): que es para elegir a qué dirección se quiere mover, y tryTo
 
 Run(): aquí están todas las tareas que el hilo debe realizar, que es ver si ya ganó, verificar que no esté descargado, elegir una dirección y solicitar moverse.
 
-```
+```java
 class Vehicle implements Runnable {
   public int ID;
   private char orientation;
@@ -392,10 +393,11 @@ class Vehicle implements Runnable {
 
 Monitor de carga: Este monitor es el encargado de la logística de cargar la batería de los vehículos del estacionamiento. Contiene el recurso crítico de los vehículos en carga y la cantidad de unidades de carga.
 
-El método más importante es el de requestCharge (usado por el proceso vehículo); aquí es donde el vehículo que se ha quedado sin baterías solicita permiso para ser recargado. Este método garantiza que un solo vehículo a la vez pueda modificar la lista de espera, evitando errores. Si la lista de los vehículos descargados en espera es muy grande, debe esperar para poder entrar a la lista. Si está todo perfecto, entra a la lista y espera hasta que una unidad de carga cargue la batería, valga la redundancia.
+El método más importante es el de requestCharge (usado por el proceso vehículo); aquí es donde el vehículo que se ha quedado sin baterías solicita permiso para ser recargado. Este método garantiza que un solo vehículo a la vez pueda modificar la lista de espera, evitando errores. Los vehiculos entran a la lista y espera hasta que una unidad de carga cargue la batería, valga la redundancia.
 
 Método charge(): Este método es usado por las unidades de carga; si no hay vehículos que cargar, entonces este espera. Si hay, lo carga y lo elimina de la lista.Este método tambien es syncronized.
-```
+
+```java
 class ChargeMonitor {
   private int avairableBatteryUnits = 0;
   private ArrayList<Integer> vehiclesOnWait = new ArrayList<>();
@@ -456,7 +458,8 @@ class ChargeMonitor {
 Clase unidad de carga: que tiene los dos monitores, el de carga y el del estacionamiento.
 
 Run(): el hilo verifica que no se haya acabado el juego, o mientras queden vehículos por cargar. La unidad de carga debe cargar la batería de los vehículos.
-```
+
+```java
 class ChargeUnit implements Runnable {
   private ChargeMonitor chargeMonitor;
   private Parking parking;
@@ -487,16 +490,22 @@ class ChargeUnit implements Runnable {
 Para esto hacemos uso de la regla run implementada en el makefile, indicando los argumento que recibe el programa usando el parametro entrada. Esta regla compila y ejecuta, si estas en windows, recomiendo usar la consola Git bash. Puede llegar a fallar alguno de los comandos que se usaron en el makefile si se usa powershell o la cmd de windows.
 
 -Windows
+```bash
 mingw32-make run entrada="ruta/del/archivo.txt"
+```
 
 -Linux
+```bash
 make run entrada="ruta/del/archivo.txt"
+```
 
 Importante: make es la herramienta que se utiliza para ejecutar archivos makefile. En windows este viene junto con la instalación de C/C++ o con Git Bash. Y si estas en linux este viene junto con el entorno Unix.
 
+Tambien hay recetas para ejecutar los casos de prueba.
 
-
-
-
-
-
+```bash
+make ejemplo0
+make ejemplo1
+make ejemplo2
+make ejemplo3
+```
