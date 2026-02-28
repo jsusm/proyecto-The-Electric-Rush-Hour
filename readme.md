@@ -9,9 +9,9 @@ Para la solución del problema se utilizó la lógica de productor-consumidor.
 - **Unidades de carga (Productores)**: Hilos encargados de llenar la batería de los vehículos cuando estos llegen a 0. Nosotros decidimos que cuando un vehículo se quede sin batería las unidades de carga  ponen la batería del vehículo en 10 unidades.
 
 #### Recursos Críticos
-1-El primer recurso crítico es el tablero ya que dos o más hilos (vehículos) no deberían acceder a la misma casilla o espacio dentro del estacionamiento al mismo tiempo. por lo tanto su manipulación tiene que ser protegida para evitar condiciones de carrera. Este tablero se encuentra dentro del monitor `Parking`.
+1. El primer recurso crítico es el tablero ya que dos o más hilos (vehículos) no deberían acceder a la misma casilla o espacio dentro del estacionamiento al mismo tiempo. por lo tanto su manipulación tiene que ser protegida para evitar condiciones de carrera. Este tablero se encuentra dentro del monitor `Parking`.
 
-2- El segundo recurso crítico en nuestra implementación es la lista de vehículos descargados dentro del monitor ChargeMonitor. Ya que las unidades de carga no deben acceder a esta lista al mismo tiempo ya que puede ocurrir que dos unidades de carga quieran recargar la batería de un mismo vehículo.
+2. El segundo recurso crítico en nuestra implementación es la lista de vehículos descargados dentro del monitor ChargeMonitor. Ya que las unidades de carga no deben acceder a esta lista al mismo tiempo ya que puede ocurrir que dos unidades de carga quieran recargar la batería de un mismo vehículo.
 
 
 #### Condiciones de Sincronización
